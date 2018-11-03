@@ -1,4 +1,7 @@
+import importlib
 import bpy
+from . import body_factory
+importlib.reload(body_factory)
 
 
 bl_info = {
@@ -20,9 +23,14 @@ def get_parent(self):
     return eval(path)  # pylint: disable=W0123
 
 
-def update_func(self, _context):
+def update_func(self, context):
     armature = get_parent(self)
-    print(armature, self)
+    #print(armature, self)
+    # build
+    if armature == context.active_object.data:
+        body_factory.set_ratios(context.active_object, armature)
+    else:
+        print('%s is not %s' % (context.active_object.data, armature))
 
 
 class BodyRatios(bpy.types.PropertyGroup):
@@ -33,7 +41,7 @@ class BodyRatios(bpy.types.PropertyGroup):
                                            max=2.0,
                                            soft_min=1.0,
                                            soft_max=1.9,
-                                           step=3,
+                                           step=1,
                                            precision=2,
                                            # options={'ANIMATABLE'},
                                            # subtype='NONE',
@@ -42,10 +50,13 @@ class BodyRatios(bpy.types.PropertyGroup):
                                            # get=None,
                                            # set=None
                                            )
-    crotch_height_meter = bpy.props.FloatProperty(name="CrotchHeightMeter")
+    crotch_height_meter = bpy.props.FloatProperty(name="CrotchHeightMeter",
+                                                  default=0.8,
+                                                  precision=2,
+                                                  unit='LENGTH',
+                                                  update=update_func)
 
 
-"""
 class BodyRatiosPanel(bpy.types.Panel):
     bl_idname = "OBJECT_PT_body_ratios"
     bl_label = "body ratios"
@@ -54,34 +65,44 @@ class BodyRatiosPanel(bpy.types.Panel):
     bl_category = "Body Ratios"
 
     @classmethod
-    def poll(cls, _context):
-        for o in bpy.data.objects:
-            if o.select:
-                return True
-        return False
+    def poll(cls, context):
+        active = context.active_object
+        if not active:
+            return False
+        if active.type != 'ARMATURE':
+            return False
+        return True
 
     def draw_header(self, _context):
-        self.layout.label(text="xxx", icon='PLUGIN')
+        self.layout.label(text="Body Ratios", icon='PLUGIN')
 
     def draw(self, context):
-        self.layout.label(text="Hello World")
-        layout = self.layout
+        active_object = context.active_object
 
-        obj = context.object
-        row = layout.row()
-        row.prop(obj, "hide_select")
-        row.prop(obj, "hide_render")
+        # delete bones
+        row = self.layout.row()
 
+        # settings
+        row = self.layout.row()
+        self.layout.prop(active_object.data.body_ratios, "height_meter")
+        self.layout.prop(active_object.data.body_ratios, "crotch_height_meter")
+
+        # build human
+        row = self.layout.row()
+
+        """
         box = layout.box()
         box.label("Selection Tools")
         box.operator("object.select_all").action = 'TOGGLE'
         row = box.row()
         row.operator("object.select_all").action = 'INVERT'
         row.operator("object.select_random")
-"""
+        """
+
 
 REGISTER_CLASSES = [
-    BodyRatios
+    BodyRatios,
+    BodyRatiosPanel
 ]
 
 
@@ -95,10 +116,11 @@ def register():
 
 
 def unregister():
-    for c in REGISTER_CLASSES:
+    if 'body_ratios' in bpy.types.Armature:
         del bpy.types.Armature.body_ratios
 
-    bpy.utils.unregister_module(c)
+    for c in REGISTER_CLASSES:
+        bpy.utils.unregister_module(c)
 
 
 if __name__ == "__main__":

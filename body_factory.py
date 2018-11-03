@@ -10,15 +10,23 @@ import mathutils  # pylint: disable=E0401
 @contextlib.contextmanager
 def tmp_mode(obj: bpy.types.Object, mode: str):
     bpy.context.scene.objects.active = obj
-    tmp = obj.mode
-    print('enter %s mode' % mode)
-    bpy.ops.object.mode_set(mode=mode)
+    tmp = None
+    if mode != obj.mode:
+        tmp = obj.mode
+        print('enter %s mode' % mode)
+        bpy.ops.object.mode_set(mode=mode)
     try:
         yield
     finally:
         bpy.context.scene.objects.active = obj
-        print('restore %s mode' % tmp)
-        bpy.ops.object.mode_set(mode=tmp)
+        if tmp:
+            print('restore %s mode' % tmp)
+            bpy.ops.object.mode_set(mode=tmp)
+
+
+def set_ratios(armature_object: bpy.types.Object, armature: bpy.types.Armature)->None:
+    with tmp_mode(armature_object, 'EDIT'):
+        print('set_ratios')
 
 
 def create_human(armature_obj: Optional[bpy.types.Object] = None):
@@ -168,4 +176,5 @@ def create_human(armature_obj: Optional[bpy.types.Object] = None):
     armature.use_mirror_x = True
 
 
-create_human(bpy.context.scene.objects.active)
+if __name__ == '__main__':
+    create_human(bpy.context.scene.objects.active)
