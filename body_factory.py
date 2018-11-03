@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 import json
 import pathlib
 import contextlib
@@ -24,9 +24,86 @@ def tmp_mode(obj: bpy.types.Object, mode: str):
             bpy.ops.object.mode_set(mode=tmp)
 
 
-def set_ratios(armature_object: bpy.types.Object, armature: bpy.types.Armature)->None:
+def set_ratios(armature_object: bpy.types.Object)->None:
     with tmp_mode(armature_object, 'EDIT'):
         print('set_ratios')
+
+
+def delete_bones(armature_object: bpy.types.Object)->None:
+    armature = armature_object.data
+    with tmp_mode(armature_object, 'EDIT'):
+        bones = [b for b in armature.edit_bones]
+        for b in bones:
+            armature.edit_bones.remove(b)
+
+
+class Bone:
+    def __init__(self, name: str, head: Tuple[float, float, float], *children, **kw)->None:
+        self.name = name
+        self.head = head
+        self.children = children
+        self.tail = None
+        if 'tail' in kw:
+            self.tail = kw['tail']
+
+    def __str__(self)->str:
+        if self.tail:
+            return '<%s %s %s>' % (self.name, self.head, self.tail)
+        else:
+            return '<%s %s>' % (self.name, self.head)
+
+
+ROOT = Bone('hips', (0, 0, 0.8),
+            Bone('spine', (0, 0, 1.0),
+                 Bone('chest', (0, 0, 1.1),
+                      Bone('neck', (0, 0, 1.3),
+                           Bone('head', (0, 0, 1.4), tail=(0, 0, 1.6))
+                           ),
+                      Bone('shoulder.L', (0.04, 0, 1.3),
+                           Bone('upper_arm.L', (0.1, 0, 1.3),
+                                Bone('lower_arm.L', (0.4, 0, 1.3),
+                                     Bone('hand.L', (0.7, 0, 1.3), tail=(0.8, 0, 1.3)
+                                          )))),
+                      Bone('shoulder.R', (-0.04, 0, 1.3),
+                           Bone('upper_arm.R', (-0.1, 0, 1.3),
+                                Bone('lower_arm.R', (-0.4, 0, 1.3),
+                                     Bone('hand.R', (-0.7, 0, 1.3), tail=(-0.8, 0, 1.3)
+                                          ))))
+                      )
+                 ),
+            Bone('upper_leg.L', (0.1, 0, 0.8),
+                 Bone('lower_leg.L', (0.1, 0, 0.4),
+                      Bone('foot.L', (0.1, 0, 0.1), tail=(0.1, -0.2, 0)
+                           ))),
+            Bone('upper_leg.R', (-0.1, 0, 0.8),
+                 Bone('lower_leg.R', (-0.1, 0, 0.4),
+                      Bone('foot.R', (-0.1, 0, 0.1), tail=(-0.1, -0.2, 0)
+                           )))
+            )
+
+
+def create_bone(armature: bpy.types.Armature, parent: bpy.types.EditBone, children: List[Bone])->None:
+    isFirst = True
+    for child_conf in children:
+        print(child_conf)
+        bone = armature.edit_bones.new(child_conf.name)
+        bone.parent = parent
+        if isFirst:
+            bone.use_connect = True
+            isFirst = False
+        else:
+            bone.use_connect = False
+        bone.head = child_conf.head
+        if child_conf.tail:
+            bone.tail = child_conf.tail
+
+        create_bone(armature, bone, child_conf.children)
+
+
+def create_bones(armature_object: bpy.types.Object)->None:
+    armature = armature_object.data
+    with tmp_mode(armature_object, 'EDIT'):
+        create_bone(armature, None, [ROOT])
 
 
 def create_human(armature_obj: Optional[bpy.types.Object] = None):

@@ -5,16 +5,16 @@ importlib.reload(body_factory)
 
 
 bl_info = {
-    "name": "body ratios",
-    "description": "humanoid skeleton utility",
-    "author": "ousttrue",
-    "version": (0, 0, 1),
-    "blender": (2, 79, 0),
-    "location": "Armature",
-    "support": "COMMUNITY",
-    "warning": "This addon is still in development.",
-    "wiki_url": "",
-    "category": "Object"
+    'name': 'body ratios',
+    'description': 'humanoid skeleton utility',
+    'author': 'ousttrue',
+    'version': (0, 0, 1),
+    'blender': (2, 79, 0),
+    'location': 'Armature',
+    'support': 'COMMUNITY',
+    'warning': 'This addon is still in development.',
+    'wiki_url': '',
+    'category': 'Object'
 }
 
 
@@ -28,14 +28,14 @@ def update_func(self, context):
     #print(armature, self)
     # build
     if armature == context.active_object.data:
-        body_factory.set_ratios(context.active_object, armature)
+        body_factory.set_ratios(context.active_object)
     else:
         print('%s is not %s' % (context.active_object.data, armature))
 
 
 class BodyRatios(bpy.types.PropertyGroup):
-    height_meter = bpy.props.FloatProperty(name="HeightMeter",
-                                           description="",
+    height_meter = bpy.props.FloatProperty(name='HeightMeter',
+                                           description='',
                                            default=1.6,
                                            min=0.1,
                                            max=2.0,
@@ -50,20 +50,14 @@ class BodyRatios(bpy.types.PropertyGroup):
                                            # get=None,
                                            # set=None
                                            )
-    crotch_height_meter = bpy.props.FloatProperty(name="CrotchHeightMeter",
+    crotch_height_meter = bpy.props.FloatProperty(name='CrotchHeightMeter',
                                                   default=0.8,
                                                   precision=2,
                                                   unit='LENGTH',
                                                   update=update_func)
 
 
-class BodyRatiosPanel(bpy.types.Panel):
-    bl_idname = "OBJECT_PT_body_ratios"
-    bl_label = "body ratios"
-    bl_space_type = "VIEW_3D"
-    bl_region_type = "TOOLS"
-    bl_category = "Body Ratios"
-
+class PollArmature:
     @classmethod
     def poll(cls, context):
         active = context.active_object
@@ -73,36 +67,54 @@ class BodyRatiosPanel(bpy.types.Panel):
             return False
         return True
 
+
+class BodyRatiosDeleteBones(bpy.types.Operator, PollArmature):
+    bl_idname = 'body_ratios.delete_bones'
+    bl_label = 'delete bones'
+
+    def execute(self, context):
+        body_factory.delete_bones(context.active_object)
+        return {'FINISHED'}
+
+
+class BodyRatiosCreateBones(bpy.types.Operator, PollArmature):
+    bl_idname = 'body_ratios.create_bones'
+    bl_label = 'create bones'
+
+    def execute(self, context):
+        body_factory.create_bones(context.active_object)
+        return {'FINISHED'}
+
+
+class BodyRatiosPanel(bpy.types.Panel, PollArmature):
+    bl_idname = 'body_ratios.panel'
+    bl_label = 'body ratios'
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+    bl_category = 'Body Ratios'
+
     def draw_header(self, _context):
-        self.layout.label(text="Body Ratios", icon='PLUGIN')
+        self.layout.label(text='Body Ratios', icon='PLUGIN')
 
     def draw(self, context):
         active_object = context.active_object
 
         # delete bones
-        row = self.layout.row()
+        self.layout.operator('body_ratios.delete_bones')
+
+        # create bones
+        self.layout.operator('body_ratios.create_bones')
 
         # settings
-        row = self.layout.row()
-        self.layout.prop(active_object.data.body_ratios, "height_meter")
-        self.layout.prop(active_object.data.body_ratios, "crotch_height_meter")
-
-        # build human
-        row = self.layout.row()
-
-        """
-        box = layout.box()
-        box.label("Selection Tools")
-        box.operator("object.select_all").action = 'TOGGLE'
-        row = box.row()
-        row.operator("object.select_all").action = 'INVERT'
-        row.operator("object.select_random")
-        """
+        self.layout.prop(active_object.data.body_ratios, 'height_meter')
+        self.layout.prop(active_object.data.body_ratios, 'crotch_height_meter')
 
 
 REGISTER_CLASSES = [
     BodyRatios,
-    BodyRatiosPanel
+    BodyRatiosDeleteBones,
+    BodyRatiosCreateBones,
+    BodyRatiosPanel,
 ]
 
 
@@ -120,8 +132,11 @@ def unregister():
         del bpy.types.Armature.body_ratios
 
     for c in REGISTER_CLASSES:
-        bpy.utils.unregister_module(c)
+        try:
+            bpy.utils.unregister_class(c)
+        except:  # pylint: disable=W0702
+            pass
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     register()
