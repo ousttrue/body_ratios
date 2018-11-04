@@ -1,6 +1,4 @@
-from typing import Optional, Tuple, List
-import json
-import pathlib
+from typing import Tuple, List
 import contextlib
 
 import bpy
@@ -22,11 +20,6 @@ def tmp_mode(obj: bpy.types.Object, mode: str):
         if tmp:
             print('restore %s mode' % tmp)
             bpy.ops.object.mode_set(mode=tmp)
-
-
-def set_ratios(armature_object: bpy.types.Object)->None:
-    with tmp_mode(armature_object, 'EDIT'):
-        print('set_ratios')
 
 
 def delete_bones(armature_object: bpy.types.Object)->None:
@@ -104,154 +97,111 @@ def create_bones(armature_object: bpy.types.Object)->None:
     armature = armature_object.data
     with tmp_mode(armature_object, 'EDIT'):
         create_bone(armature, None, [ROOT])
+    armature.show_names = True
+    armature.use_mirror_x = True
 
 
-def create_human(armature_obj: Optional[bpy.types.Object] = None):
-    # read config
-    config_file = pathlib.Path(
-        bpy.data.filepath).absolute().parent / 'config.json'
-    with config_file.open() as r:
-        config = json.load(r)
+class BodyRatios:
+    def __init__(self, armature: bpy.types.Armature)->None:
+        self.height = armature.body_ratios.height_meter
+        self.crotch_height_meter = armature.body_ratios.crotch_height_meter
+        self.heads = armature.body_ratios.heads
+        self.neck_len = armature.body_ratios.neck_meter
+        self.leg_interval = armature.body_ratios.leg_interval_meter
+        self.shoulder_width = armature.body_ratios.shoulder_width_meter
+        self.ankle = armature.body_ratios.ankle_height_meter
 
-    # get armature
-    if armature_obj:
-        if armature_obj.type != 'ARMATURE':
-            raise Exception('not armature: '+armature_obj.type)
-        armature = armature_obj.data
-    else:
-        # create armature
-        name = 'human'
-        armature = bpy.data.armatures.new(name)
-        armature_obj = bpy.data.objects.new(name, armature)
+        self.head_size = self.height/self.heads
+        self.head_height = self.head_size * (self.heads-1)
+        self.shoulder_height = self.head_height - self.head_size * self.neck_len
+        self.hips_height = self.crotch_height_meter
+        self.hips_spine_chest = (self.shoulder_height - self.hips_height)/3
 
-        bpy.context.scene.objects.link(armature_obj)
-        armature_obj.select = True
-        bpy.context.scene.objects.active = armature_obj
-        print('create armature %s' % armature)
+        self.arm_length = self.shoulder_height - self.hips_height
 
-    with tmp_mode(armature_obj, 'EDIT'):
-        # clear
-        bones = [b for b in armature.edit_bones]
-        for b in bones:
-            armature.edit_bones.remove(b)
+        self.ll = self.leg_interval/2
+        self.knee_height = (self.crotch_height_meter - self.ankle) / 2
 
-        height = config['height']
-        heads = config['heads']
-        neck_len = config['neck_len']
-        leg_interval = config['leg_interval']
-        shoulder_width = config['shoulder_width']
-        ankle = config['ankle']
 
-        head_size = height/heads
-        head_height = head_size * (heads-1)
-        shoulder_height = head_height - head_size * neck_len
-        hips_height = height/2
-        hips_spine_chest = (shoulder_height - hips_height)/3
+def set_ratios(armature_object: bpy.types.Object)->None:
+    armature = armature_object.data
+    body_ratios = BodyRatios(armature)
 
-        arm_length = shoulder_height - hips_height
-
-        ll = leg_interval/2
-        knee_height = ankle + (height/2 - ankle)/2
+    with tmp_mode(armature_object, 'EDIT'):
 
         #
         # hips, spine, chest, neck, head
         #
 
         # hips
-        hips = armature.edit_bones.new('hips')
-        hips.head = (0, 0, hips_height)
+        hips = armature.edit_bones['hips']
+        hips.head = (0, 0, body_ratios.hips_height)
 
         # spine
-        spine = armature.edit_bones.new('spine')
-        spine.use_connect = True
-        spine.parent = hips
-        spine.head = hips.head + mathutils.Vector((0, 0, hips_spine_chest))
+        spine = armature.edit_bones['spine']
+        spine.head = hips.head + \
+            mathutils.Vector((0, 0, body_ratios.hips_spine_chest))
 
         # chest
-        chest = armature.edit_bones.new('chest')
-        chest.use_connect = True
-        chest.parent = spine
-        chest.head = spine.head + mathutils.Vector((0, 0, hips_spine_chest))
+        chest = armature.edit_bones['chest']
+        chest.head = spine.head + \
+            mathutils.Vector((0, 0, body_ratios.hips_spine_chest))
 
         # neck
-        neck = armature.edit_bones.new('neck')
-        neck.use_connect = True
-        neck.parent = chest
-        neck.head = (0, 0, shoulder_height)
+        neck = armature.edit_bones['neck']
+        neck.head = (0, 0, body_ratios.shoulder_height)
 
         # head
-        head = armature.edit_bones.new('head')
-        head.use_connect = True
-        head.parent = neck
-        head.head = (0, 0, head_height)
-        head.tail = (0, 0, height)
+        head = armature.edit_bones['head']
+        head.head = (0, 0, body_ratios.head_height)
+        head.tail = (0, 0, body_ratios.height)
 
-        def create_LR(name, use_connect,
-                      l_parent, l_head,
-                      r_parent, r_head)->Tuple[bpy.types.EditBone, bpy.types.EditBone]:
-            l = armature.edit_bones.new(name+'.L')
-            l.use_connect = use_connect
-            l.parent = l_parent
+        def create_LR(name, l_head, r_head)->Tuple[bpy.types.EditBone, bpy.types.EditBone]:
+            l = armature.edit_bones[name+'.L']
             l.head = l_head
-            r = armature.edit_bones.new(name+'.R')
-            r.use_connect = use_connect
-            r.parent = r_parent
+            r = armature.edit_bones[name+'.R']
             r.head = r_head
             return l, r
 
         #
         # legs
         #
-        upper_leg_l, upper_leg_r = create_LR(
-            'upper_leg', False,
-            hips, (ll, 0, hips_height),
-            hips, (-ll, 0, hips_height))
-        lower_leg_l, lower_leg_r = create_LR(
-            'lower_leg', True,
-            upper_leg_l, (ll, 0, knee_height),
-            upper_leg_r, (-ll, 0, knee_height))
-        foot_l, foot_r = create_LR(
-            'foot', True,
-            lower_leg_l, (ll, 0, ankle),
-            lower_leg_r, (-ll, 0, ankle))
-        foot_l.tail = (ll, -0.2, 0)
-        foot_r.tail = (-ll, -0.2, 0)
+        create_LR('upper_leg',
+                  (body_ratios.ll, 0, body_ratios.hips_height),
+                  (-body_ratios.ll, 0, body_ratios.hips_height))
+        create_LR('lower_leg',
+                  (body_ratios.ll, 0, body_ratios.knee_height),
+                  (-body_ratios.ll, 0, body_ratios.knee_height))
+        foot_l, foot_r = create_LR('foot',
+                                   (body_ratios.ll, 0, body_ratios.ankle),
+                                   (-body_ratios.ll, 0, body_ratios.ankle))
+        foot_l.tail = (body_ratios.ll, -0.2, 0)
+        foot_r.tail = (-body_ratios.ll, -0.2, 0)
 
         #
         # arms -> fingers
         #
-        shoulder_l, shoulder_r = create_LR(
-            'shoulder', False,
-            chest, (0.05, 0, shoulder_height),
-            chest, (-0.05, 0, shoulder_height))
+        shoulder_l, shoulder_r = create_LR('shoulder',
+                                           (0.05, 0, body_ratios.shoulder_height),
+                                           (-0.05, 0, body_ratios.shoulder_height))
 
-        shoulder = mathutils.Vector((shoulder_width/2, 0, 0))
-        upper_arm_l, upper_arm_r = create_LR(
-            'upper_arm', True,
-            shoulder_l, shoulder_l.head + shoulder,
-            shoulder_r, shoulder_r.head - shoulder
-        )
+        shoulder = mathutils.Vector((body_ratios.shoulder_width/2, 0, 0))
+        upper_arm_l, upper_arm_r = create_LR('upper_arm',
+                                             shoulder_l.head + shoulder,
+                                             shoulder_r.head - shoulder
+                                             )
 
-        arm = mathutils.Vector((arm_length/2, 0, 0))
-        lower_arm_l, lower_arm_r = create_LR(
-            'lower_arm', True,
-            upper_arm_l, upper_arm_l.head + arm,
-            upper_arm_r, upper_arm_r.head - arm
-        )
+        arm = mathutils.Vector((body_ratios.arm_length/2, 0, 0))
+        lower_arm_l, lower_arm_r = create_LR('lower_arm',
+                                             upper_arm_l.head + arm,
+                                             upper_arm_r.head - arm
+                                             )
 
-        hand_l, hand_r = create_LR(
-            'hand', True,
-            lower_arm_l, lower_arm_l.head + arm,
-            lower_arm_r, lower_arm_r.head - arm
-        )
+        hand_l, hand_r = create_LR('hand',
+                                   lower_arm_l.head + arm,
+                                   lower_arm_r.head - arm
+                                   )
 
         hand = mathutils.Vector((0.1, 0, 0))
         hand_l.tail = hand_l.head + hand
         hand_r.tail = hand_r.head - hand
-
-    armature.show_names = True
-    armature.use_mirror_x = True
-
-
-if __name__ == '__main__':
-    create_human(bpy.context.scene.objects.active)

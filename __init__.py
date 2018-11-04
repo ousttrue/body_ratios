@@ -1,7 +1,11 @@
+IS_RELOAD = 'bpy' in globals()
+
 import importlib
 import bpy
 from . import body_factory
-importlib.reload(body_factory)
+
+if IS_RELOAD:
+    importlib.reload(body_factory)
 
 
 bl_info = {
@@ -53,8 +57,44 @@ class BodyRatios(bpy.types.PropertyGroup):
     crotch_height_meter = bpy.props.FloatProperty(name='CrotchHeightMeter',
                                                   default=0.8,
                                                   precision=2,
+                                                  step=1,
                                                   unit='LENGTH',
                                                   update=update_func)
+
+    heads = bpy.props.FloatProperty(name='TotalHeightHeads',
+                                    default=6,
+                                    precision=1,
+                                    step=10,
+                                    update=update_func)
+
+    neck_meter = bpy.props.FloatProperty(name='NeckLengthMeter',
+                                         default=0.1,
+                                         precision=2,
+                                         step=1,
+                                         unit='LENGTH',
+                                         update=update_func
+                                         )
+
+    leg_interval_meter = bpy.props.FloatProperty(name='LegIntervalMeter',
+                                                 default=0.1,
+                                                 precision=2,
+                                                 step=1,
+                                                 unit='LENGTH',
+                                                 update=update_func)
+
+    shoulder_width_meter = bpy.props.FloatProperty(name='ShoulderWidthMeter',
+                                                   default=0.3,
+                                                   precision=2,
+                                                   step=1,
+                                                   unit='LENGTH',
+                                                   update=update_func)
+
+    ankle_height_meter = bpy.props.FloatProperty(name='AnkleHeightMeter',
+                                                 default=0.1,
+                                                 precision=2,
+                                                 step=1,
+                                                 unit='LENGTH',
+                                                 update=update_func)
 
 
 class PollArmature:
@@ -83,6 +123,7 @@ class BodyRatiosCreateBones(bpy.types.Operator, PollArmature):
 
     def execute(self, context):
         body_factory.create_bones(context.active_object)
+        body_factory.set_ratios(context.active_object)
         return {'FINISHED'}
 
 
@@ -107,7 +148,13 @@ class BodyRatiosPanel(bpy.types.Panel, PollArmature):
 
         # settings
         self.layout.prop(active_object.data.body_ratios, 'height_meter')
+        self.layout.prop(active_object.data.body_ratios, 'heads')
         self.layout.prop(active_object.data.body_ratios, 'crotch_height_meter')
+        self.layout.prop(active_object.data.body_ratios, 'neck_meter')
+        self.layout.prop(active_object.data.body_ratios,
+                         'shoulder_width_meter')
+        self.layout.prop(active_object.data.body_ratios, 'leg_interval_meter')
+        self.layout.prop(active_object.data.body_ratios, 'ankle_height_meter')
 
 
 REGISTER_CLASSES = [
