@@ -38,63 +38,82 @@ def update_func(self, context):
 
 
 class BodyRatios(bpy.types.PropertyGroup):
-    height_meter = bpy.props.FloatProperty(name='HeightMeter',
-                                           description='',
-                                           default=1.6,
-                                           min=0.1,
-                                           max=2.0,
-                                           soft_min=1.0,
-                                           soft_max=1.9,
-                                           step=1,
-                                           precision=2,
-                                           # options={'ANIMATABLE'},
-                                           # subtype='NONE',
-                                           unit='LENGTH',
-                                           update=update_func,
-                                           # get=None,
-                                           # set=None
-                                           )
-    crotch_height_meter = bpy.props.FloatProperty(name='CrotchHeightMeter',
-                                                  default=0.8,
-                                                  precision=2,
-                                                  step=1,
-                                                  unit='LENGTH',
-                                                  update=update_func)
+    height_meter = bpy.props.FloatProperty(
+        name='HeightMeter',
+        description='',
+        default=1.6,
+        min=0.1,
+        max=2.0,
+        soft_min=1.0,
+        soft_max=1.9,
+        step=1,
+        precision=2,
+        # options={'ANIMATABLE'},
+        # subtype='NONE',
+        unit='LENGTH',
+        update=update_func,
+        # get=None,
+        # set=None
+    )
+    crotch_height_meter = bpy.props.FloatProperty(
+        name='CrotchHeightMeter',
+        default=0.8,
+        min=0.1,
+        max=2.0,
+        precision=2,
+        step=1,
+        unit='LENGTH',
+        update=update_func)
 
-    heads = bpy.props.FloatProperty(name='TotalHeightHeads',
-                                    default=6,
-                                    precision=1,
-                                    step=10,
-                                    update=update_func)
+    heads = bpy.props.FloatProperty(
+        name='TotalHeightHeads',
+        default=6,
+        min=2,
+        max=10,
+        precision=1,
+        step=10,
+        update=update_func)
 
-    neck_meter = bpy.props.FloatProperty(name='NeckLengthMeter',
-                                         default=0.1,
-                                         precision=2,
-                                         step=1,
-                                         unit='LENGTH',
-                                         update=update_func
-                                         )
+    neck_meter = bpy.props.FloatProperty(
+        name='NeckLengthMeter',
+        default=0.1,
+        min=0.01,
+        max=1,
+        precision=2,
+        step=1,
+        unit='LENGTH',
+        update=update_func
+    )
 
-    leg_interval_meter = bpy.props.FloatProperty(name='LegIntervalMeter',
-                                                 default=0.1,
-                                                 precision=2,
-                                                 step=1,
-                                                 unit='LENGTH',
-                                                 update=update_func)
+    leg_interval_meter = bpy.props.FloatProperty(
+        name='LegIntervalMeter',
+        default=0.1,
+        min=0.01,
+        max=1,
+        precision=2,
+        step=1,
+        unit='LENGTH',
+        update=update_func)
 
-    shoulder_width_meter = bpy.props.FloatProperty(name='ShoulderWidthMeter',
-                                                   default=0.3,
-                                                   precision=2,
-                                                   step=1,
-                                                   unit='LENGTH',
-                                                   update=update_func)
+    shoulder_width_meter = bpy.props.FloatProperty(
+        name='ShoulderWidthMeter',
+        default=0.3,
+        min=0.01,
+        max=1,
+        precision=2,
+        step=1,
+        unit='LENGTH',
+        update=update_func)
 
-    ankle_height_meter = bpy.props.FloatProperty(name='AnkleHeightMeter',
-                                                 default=0.1,
-                                                 precision=2,
-                                                 step=1,
-                                                 unit='LENGTH',
-                                                 update=update_func)
+    ankle_height_meter = bpy.props.FloatProperty(
+        name='AnkleHeightMeter',
+        default=0.1,
+        min=0.01,
+        max=1,
+        precision=2,
+        step=1,
+        unit='LENGTH',
+        update=update_func)
 
 
 class PollArmature:

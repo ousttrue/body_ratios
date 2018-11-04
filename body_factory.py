@@ -120,7 +120,8 @@ class BodyRatios:
         self.arm_length = self.shoulder_height - self.hips_height
 
         self.ll = self.leg_interval/2
-        self.knee_height = (self.crotch_height_meter - self.ankle) / 2
+        self.knee_height = self.ankle + \
+            (self.crotch_height_meter - self.ankle) / 2
 
 
 def set_ratios(armature_object: bpy.types.Object)->None:
